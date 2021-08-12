@@ -128,6 +128,7 @@ def k8s_deploy(
         objects = [],
         gitops = True,  # make sure to use gitops = False to work with individual namespace. This option will be turned False if namespace is '{BUILD_USER}'
         gitops_path = "cloud",
+        gitops_directory_structure = "{namespace}/{cluster}",
         not_gitops_image_repository_prefix = '{BUILD_USER}',  # Sets the .apply|.delete targets to utilize a repository prefix when gitops is False
         deployment_branch = None,
         release_branch_prefix = "master",
@@ -269,6 +270,7 @@ def k8s_deploy(
             cluster = cluster,
             namespace = namespace,
             gitops_path = gitops_path,
+            gitops_directory_structure = gitops_directory_structure,
             strip_prefixes = [
                 namespace + "-",
                 cluster + "-",
