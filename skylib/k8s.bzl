@@ -100,6 +100,8 @@ def _image_pushes(name_suffix, images, image_registry, image_repository, image_r
 def k8s_deploy(
         name,  # name of the rule is important for gitops, since it will become a part of the target manifest file name in /cloud
         cluster = "dev",
+        kubectl_context_cluster=None,
+        kubectl_context_user=None,
         user = "{BUILD_USER}",
         namespace = None,
         configmaps_srcs = None,
@@ -142,13 +144,19 @@ def k8s_deploy(
         configurations = configurations + ["@com_adobe_rules_gitops//skylib/kustomize:nameprefix_deployment_labels_config.yaml"]
     for reservedname in ["CLUSTER", "NAMESPACE"]:
         if substitutions.get(reservedname):
-            fail("do not put %s in substitutions parameter of k8s_deploy. It will be added autimatically" % reservedname)
+            fail("do not put %s in substitutions parameter of k8s_deploy. It will be added automatically" % reservedname)
     substitutions = dict(substitutions)
     substitutions["CLUSTER"] = cluster
 
     # NAMESPACE substitution is deferred until test_setup/kubectl/gitops
     if namespace == "{BUILD_USER}":
         gitops = False
+
+    if not kubectl_context_cluster:
+        kubectl_context_cluster = cluster
+
+    if not kubectl_context_user:
+       kubectl_context_cluster = user
 
     if not gitops:
         # Mynamespace option
@@ -190,8 +198,8 @@ def k8s_deploy(
         kubectl(
             name = name + ".apply",
             srcs = [name],
-            cluster = cluster,
-            user = user,
+            cluster = kubectl_context_cluster,
+            user = kubectl_context_user,
             namespace = namespace,
             visibility = visibility,
         )
@@ -199,9 +207,9 @@ def k8s_deploy(
             name = name + ".delete",
             srcs = [name],
             command = "delete",
-            cluster = cluster,
+            cluster = kubectl_context_cluster,
+            user = kubectl_context_user,
             push = False,
-            user = user,
             namespace = namespace,
             visibility = visibility,
         )
@@ -250,8 +258,8 @@ def k8s_deploy(
         kubectl(
             name = name + ".apply",
             srcs = [name],
-            cluster = cluster,
-            user = user,
+            cluster = kubectl_context_cluster,
+            user = kubectl_context_user,
             namespace = namespace,
             visibility = visibility,
         )
