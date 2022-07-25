@@ -73,7 +73,7 @@ show = rule(
     executable = True,
 )
 
-def _image_pushes(name_suffix, images, image_registry, image_repository, image_repository_prefix, image_digest_tag):
+def _image_pushes(name_suffix, images, image_registry, image_repository, image_repository_prefix, image_digest_tag, tags = None):
     image_pushes = []
     for image_name in images:
         image = images[image_name]
@@ -94,6 +94,7 @@ def _image_pushes(name_suffix, images, image_registry, image_repository, image_r
                 registry = image_registry,
                 repository = image_repository,
                 repository_prefix = image_repository_prefix,
+                tags = tags,
             )
     return image_pushes
 
@@ -135,6 +136,7 @@ def k8s_deploy(
         flatten_manifest_directories = False,
         start_tag = "{{",
         end_tag = "}}",
+        tags = None,  # bazel tags to forward to all rules in this macro
         visibility = None):
     """ k8s_deploy
     """
@@ -170,6 +172,7 @@ def k8s_deploy(
             image_repository = image_repository,
             image_repository_prefix = not_gitops_image_repository_prefix,
             image_digest_tag = image_digest_tag,
+            tags = tags,
         )
         kustomize(
             name = name,
@@ -194,6 +197,7 @@ def k8s_deploy(
             objects = objects,
             image_name_patches = image_name_patches,
             image_tag_patches = image_tag_patches,
+            tags = tags,
             visibility = visibility,
         )
         kubectl(
@@ -202,6 +206,7 @@ def k8s_deploy(
             cluster = kubectl_context_cluster,
             user = kubectl_context_user,
             namespace = namespace,
+            tags = tags,
             visibility = visibility,
         )
         kubectl(
@@ -212,12 +217,14 @@ def k8s_deploy(
             user = kubectl_context_user,
             push = False,
             namespace = namespace,
+            tags = tags,
             visibility = visibility,
         )
         show(
             name = name + ".show",
             namespace = namespace,
             src = name,
+            tags = tags,
             visibility = visibility,
         )
     else:
@@ -231,6 +238,7 @@ def k8s_deploy(
             image_repository = image_repository,
             image_repository_prefix = image_repository_prefix,
             image_digest_tag = image_digest_tag,
+            tags = tags,
         )
         kustomize(
             name = name,
@@ -255,6 +263,7 @@ def k8s_deploy(
             patches = patches,
             image_name_patches = image_name_patches,
             image_tag_patches = image_tag_patches,
+            tags = tags,
         )
         kubectl(
             name = name + ".apply",
@@ -262,6 +271,7 @@ def k8s_deploy(
             cluster = kubectl_context_cluster,
             user = kubectl_context_user,
             namespace = namespace,
+            tags = tags,
             visibility = visibility,
         )
         kustomize_gitops(
@@ -277,12 +287,14 @@ def k8s_deploy(
             ],
             deployment_branch = deployment_branch,
             release_branch_prefix = release_branch_prefix,
+            tags = tags,
             visibility = ["//visibility:public"],
         )
         show(
             name = name + ".show",
             src = name,
             namespace = namespace,
+            tags = tags,
             visibility = visibility,
         )
 
