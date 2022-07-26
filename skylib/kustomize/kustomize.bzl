@@ -409,7 +409,7 @@ def _python_runfiles(ctx, f):
     return "PYTHON_RUNFILES=${RUNFILES} %s" % _runfiles(ctx, f)
 
 def _format_gitops_directory_structure(string, cluster, namespace):
-    return string.format(cluster=cluster, namespace=namespace)
+    return string.format(cluster = cluster, namespace = namespace)
 
 def imagePushStatements(
         ctx,
@@ -482,14 +482,13 @@ fi
         ),
     ]
 
-
 gitops = rule(
     attrs = {
         "srcs": attr.label_list(providers = (KustomizeInfo,)),
         "cluster": attr.string(mandatory = True),
         "namespace": attr.string(mandatory = True),
         "deployment_branch": attr.string(),
-        "gitops_directory_structure": attr.string(default="{namespace}/{cluster}"),
+        "gitops_directory_structure": attr.string(default = "{namespace}/{cluster}"),
         "gitops_path": attr.string(),
         "release_branch_prefix": attr.string(),
         "strip_prefixes": attr.string_list(),
