@@ -73,7 +73,7 @@ show = rule(
     executable = True,
 )
 
-def _image_pushes(name_suffix, images, image_registry, image_repository, image_repository_prefix, image_digest_tag):
+def _image_pushes(name_suffix, images, image_registry, image_repository, image_repository_prefix, image_digest_tag, tags = None):
     image_pushes = []
     for image_name in images:
         image = images[image_name]
@@ -94,12 +94,15 @@ def _image_pushes(name_suffix, images, image_registry, image_repository, image_r
                 registry = image_registry,
                 repository = image_repository,
                 repository_prefix = image_repository_prefix,
+                tags = tags,
             )
     return image_pushes
 
 def k8s_deploy(
         name,  # name of the rule is important for gitops, since it will become a part of the target manifest file name in /cloud
         cluster = "dev",
+        kubectl_context_cluster = None,
+        kubectl_context_user = None,
         user = "{BUILD_USER}",
         namespace = None,
         configmaps_srcs = None,
@@ -126,11 +129,14 @@ def k8s_deploy(
         objects = [],
         gitops = True,  # make sure to use gitops = False to work with individual namespace. This option will be turned False if namespace is '{BUILD_USER}'
         gitops_path = "cloud",
+        gitops_directory_structure = "{namespace}/{cluster}",
+        not_gitops_image_repository_prefix = "{BUILD_USER}",  # Sets the .apply|.delete targets to utilize a repository prefix when gitops is False
         deployment_branch = None,
         release_branch_prefix = "master",
         flatten_manifest_directories = False,
         start_tag = "{{",
         end_tag = "}}",
+        tags = None,  # bazel tags to forward to all rules in this macro
         visibility = None):
     """ k8s_deploy
     """
@@ -141,13 +147,19 @@ def k8s_deploy(
         configurations = configurations + ["@com_adobe_rules_gitops//skylib/kustomize:nameprefix_deployment_labels_config.yaml"]
     for reservedname in ["CLUSTER", "NAMESPACE"]:
         if substitutions.get(reservedname):
-            fail("do not put %s in substitutions parameter of k8s_deploy. It will be added autimatically" % reservedname)
+            fail("do not put %s in substitutions parameter of k8s_deploy. It will be added automatically" % reservedname)
     substitutions = dict(substitutions)
     substitutions["CLUSTER"] = cluster
 
     # NAMESPACE substitution is deferred until test_setup/kubectl/gitops
     if namespace == "{BUILD_USER}":
         gitops = False
+
+    if not kubectl_context_cluster:
+        kubectl_context_cluster = cluster
+
+    if not kubectl_context_user:
+        kubectl_context_cluster = user
 
     if not gitops:
         # Mynamespace option
@@ -158,8 +170,9 @@ def k8s_deploy(
             images = images,
             image_registry = image_registry,
             image_repository = image_repository,
-            image_repository_prefix = "{BUILD_USER}",
+            image_repository_prefix = not_gitops_image_repository_prefix,
             image_digest_tag = image_digest_tag,
+            tags = tags,
         )
         kustomize(
             name = name,
@@ -184,30 +197,34 @@ def k8s_deploy(
             objects = objects,
             image_name_patches = image_name_patches,
             image_tag_patches = image_tag_patches,
+            tags = tags,
             visibility = visibility,
         )
         kubectl(
             name = name + ".apply",
             srcs = [name],
-            cluster = cluster,
-            user = user,
+            cluster = kubectl_context_cluster,
+            user = kubectl_context_user,
             namespace = namespace,
+            tags = tags,
             visibility = visibility,
         )
         kubectl(
             name = name + ".delete",
             srcs = [name],
             command = "delete",
-            cluster = cluster,
+            cluster = kubectl_context_cluster,
+            user = kubectl_context_user,
             push = False,
-            user = user,
             namespace = namespace,
+            tags = tags,
             visibility = visibility,
         )
         show(
             name = name + ".show",
             namespace = namespace,
             src = name,
+            tags = tags,
             visibility = visibility,
         )
     else:
@@ -221,6 +238,7 @@ def k8s_deploy(
             image_repository = image_repository,
             image_repository_prefix = image_repository_prefix,
             image_digest_tag = image_digest_tag,
+            tags = tags,
         )
         kustomize(
             name = name,
@@ -245,13 +263,15 @@ def k8s_deploy(
             patches = patches,
             image_name_patches = image_name_patches,
             image_tag_patches = image_tag_patches,
+            tags = tags,
         )
         kubectl(
             name = name + ".apply",
             srcs = [name],
-            cluster = cluster,
-            user = user,
+            cluster = kubectl_context_cluster,
+            user = kubectl_context_user,
             namespace = namespace,
+            tags = tags,
             visibility = visibility,
         )
         kustomize_gitops(
@@ -260,18 +280,21 @@ def k8s_deploy(
             cluster = cluster,
             namespace = namespace,
             gitops_path = gitops_path,
+            gitops_directory_structure = gitops_directory_structure,
             strip_prefixes = [
                 namespace + "-",
                 cluster + "-",
             ],
             deployment_branch = deployment_branch,
             release_branch_prefix = release_branch_prefix,
+            tags = tags,
             visibility = ["//visibility:public"],
         )
         show(
             name = name + ".show",
             src = name,
             namespace = namespace,
+            tags = tags,
             visibility = visibility,
         )
 
