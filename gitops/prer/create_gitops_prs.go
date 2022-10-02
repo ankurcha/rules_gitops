@@ -53,6 +53,7 @@ var (
 	gitCommit              = flag.String("git_commit", "unknown", "Git commit to use in commit message")
 	deploymentBranchSuffix = flag.String("deployment_branch_suffix", "", "suffix to add to all deployment branch names")
 	gitHost                = flag.String("git_server", "bitbucket", "the git server api to use. 'bitbucket', 'github' or 'gitlab'")
+	gitCommitMessage       = flag.String("git_commit_message", "", "git commit message to use")
 )
 
 func bazelQuery(query string) *analysis.CqueryResult {
@@ -158,7 +159,19 @@ func main() {
 			bin := bazel.TargetToExecutable(target)
 			exec.Mustex("", bin, "--nopush", "--nobazel", "--deployment_root", gitopsdir)
 		}
-		if workdir.Commit(fmt.Sprintf("GitOps for release branch %s from %s commit %s\n%s", *releaseBranch, *branchName, *gitCommit, commitmsg.Generate(targets)), *gitopsPath) {
+
+		commitMessage := fmt.Sprintf(
+			"GitOps for release branch %s from %s commit %s\n%s",
+			*releaseBranch,
+			*branchName,
+			*gitCommit,
+			commitmsg.Generate(targets),
+		)
+		if gitCommitMessage != nil && len(*gitCommitMessage) > 0 {
+			commitMessage = *gitCommitMessage
+		}
+
+		if workdir.Commit(commitMessage, *gitopsPath) {
 			log.Println("branch", branch, "has changes, push is required")
 			updatedGitopsTargets = append(updatedGitopsTargets, targets...)
 			updatedGitopsBranches = append(updatedGitopsBranches, branch)
